@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chat Assistant</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+    <div class="convo" id="convo">
+        {% for msg in messages[1:] %}
+            <div class="message {{ msg.role }}">
+                {% if msg.role == "bot" %}
+                    <div class="bot-content">{{ msg.content }}</div>
+                {% else %}
+                    {{ msg.content }}
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+
+    <div class="chatbox">
+        <input type="text" id="prompt" class="prompt" placeholder="Type a message..." autocomplete="off">
+        <button id="sendBtn" class="send-btn">Send</button>
+    </div>
+
+<script>
+const convo = document.getElementById("convo");
+const promptInput = document.getElementById("prompt");
+const sendBtn = document.getElementById("sendBtn");
+
+function addMessage(text, sender) {
+    const msg = document.createElement("div");
+    msg.classList.add("message", sender);
+    if(sender === "bot"){
+        msg.innerHTML = marked.parse(text);
+    } else {
+        msg.textContent = text;
+    }
+    convo.appendChild(msg);
+    convo.scrollTop = convo.scrollHeight;
+}
+
+async function sendMessage() {
+    const text = promptInput.value.trim();
+    if(!text) return;
+
+    addMessage(text, "user");
+    promptInput.value = "";
+    promptInput.disabled = true;
+    sendBtn.disabled = true;
+
+    const response = await fetch("/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({prompt: text})
+    });
+
+    const data = await response.json();
+    addMessage(data.reply, "bot");
+
+    promptInput.disabled = false;
+    sendBtn.disabled = false;
+    promptInput.focus();
+}
+
+sendBtn.addEventListener("click", sendMessage);
+promptInput.addEventListener("keydown", (e) => {
+    if(e.key === "Enter"){
+        e.preventDefault();
+        sendMessage();
+    }
+});
+</script>
+</body>
+</html>
